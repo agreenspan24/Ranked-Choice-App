@@ -1,0 +1,18 @@
+{
+  "name": "ranked-choice-app",
+  "main": "server.js",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "node server.js",
+    "start:dev": "mode=local node server.js"
+  },
+  "author": "Adam Greenspan",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "ejs": "^2.6.1",
+    "express": "^4.16.4",
+    "mongodb": "^3.1.10"
+  }
+}
