@@ -60,6 +60,7 @@ In addition, some of the tools it takes advantage of are:
 - Webpack
 - Typescript
 - Babel
+- Material UI
 
 ## Sources on Ranked Choice Voting
 - https://www.rankedchoicevoting.org/
