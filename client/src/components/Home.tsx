@@ -2,44 +2,52 @@ import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import { PollDto } from '../types';
 import axios from 'axios';
+import { PollSummaryCard } from './PollSummaryCard';
+import { Button, Typography, Grid } from '@material-ui/core';
 
 type HomeState = {
-    polls: PollDto[];
+  polls: PollDto[];
 }
 
 export class Home extends Component<{}, HomeState>  {
-    constructor(props: {}) {
-        super(props);
+  constructor(props: {}) {
+    super(props);
 
-        this.state = {
-            polls: []
-        };
-    }
-    
-    componentDidMount() {
-        axios.get<PollDto[]>('/api/polls')
-            .then(res => {
-                this.setState({
-                    polls: res.data
-                });
-            }).catch(err => {
-                console.log(err);
-            })
-    }
+    this.state = {
+      polls: []
+    };
+  }
 
-    render() {
-        return (
-            <>
-                <h1>Home page</h1>
-                <Link to="/poll">Create Poll</Link>
-                {this.state.polls.map(p => 
-                    <div>
-                        <Link to={`/poll?poll_id=${p.id}`}>{p.name}</Link>
-                        <div>{p.description}</div>
-                        <div>Votes: {p.voters.length}</div>
-                    </div>
-                )}
-            </>
-        );
-    }
+  componentDidMount() {
+    axios.get<PollDto[]>('/api/polls')
+      .then(res => {
+        this.setState({
+          polls: res.data
+        });
+      }).catch(err => {
+        console.log(err);
+      })
+  }
+
+  render() {
+    return (
+      <div>
+        <Grid container spacing={3} justify="space-between" style={{ marginTop: 24 }}>
+          <Grid item>
+            <Typography component="h2" variant="h2">
+              Ranked Choice Voting
+                        </Typography>
+          </Grid>
+          <Grid item>
+            <Link to="/poll">
+              <Button variant="contained" color="primary">
+                Create Poll
+                            </Button>
+            </Link>
+          </Grid>
+        </Grid>
+        {this.state.polls.map(p => <PollSummaryCard key={p.id} poll={p} />)}
+      </div>
+    );
+  }
 }

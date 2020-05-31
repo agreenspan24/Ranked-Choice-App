@@ -4,143 +4,183 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { getPoll } from '../api/poll';
 import { getParam } from '../helpers';
+import { Table, TableHead, TableBody, TableRow, TableCell, TextField, FormControl, Button, Select, MenuItem } from '@material-ui/core';
 
 type OptionRank = {
-    rank: number;
-    option: string | null;
+  rank: number;
+  option: string | null;
 }
 
 type VoteState = {
-    poll_id: string | null;
-    poll: PollDto | null;
-    voter: string;
-    choices: OptionRank[];
+  poll_id: string | null;
+  poll: PollDto | null;
+  voter: string;
+  remainingOptions: string[];
+  choices: OptionRank[];
 }
 
 export class Vote extends Component<{}, VoteState> {
-    constructor(props: {}) {
-        super (props);
+  constructor(props: {}) {
+    super(props);
 
-        this.state = {
-            poll_id: getParam('poll_id'),
-            poll: null,
-            voter: '',
-            choices: []
-        };
-    }
+    this.state = {
+      poll_id: getParam('poll_id'),
+      poll: null,
+      voter: '',
+      remainingOptions: [],
+      choices: []
+    };
+  }
 
-    private getPoll = () => {
-        if (!this.state.poll_id) return;
+  private getPoll = () => {
+    if (!this.state.poll_id) return;
 
-        getPoll(this.state.poll_id).then(res => {
-            const choices: OptionRank[] = [];
+    getPoll(this.state.poll_id).then(res => {
+      const choices: OptionRank[] = [];
 
-            for (let i = 0; i < res.data.options.length; i++) {
-                choices.push({
-                    rank: i,
-                    option: null
-                });
-            }
-
-            this.setState({
-                poll: res.data,
-                choices: choices
-            });
-        }).catch(err => {
-          console.log(err);
+      for (let i = 0; i < res.data.options.length; i++) {
+        choices.push({
+          rank: i,
+          option: null
         });
+      }
+
+      this.setState({
+        poll: res.data,
+        remainingOptions: res.data.options.slice(0),
+        choices: choices
+      });
+    }).catch(err => {
+      console.log(err);
+    });
+  }
+
+  private isValid = () => {
+    if (!this.state.voter) {
+      return false;
     }
 
-    private isValid = () => {
-        if (!this.state.voter) {
-            return false;
+    const seenBefore: string[] = [];
+
+    return this.state.choices.every(or => {
+      if (or.option) {
+        if (seenBefore.indexOf(or.option) > -1) {
+          return false;
         }
 
-        const seenBefore: string[] = [];
+        seenBefore.push(or.option);
+      } else if (or.rank === 1) {
+        return false;
+      }
 
-        return this.state.choices.every(or => {
-            if (or.option) {
-                if (seenBefore.indexOf(or.option) > -1) {
-                    return false;
-                }
+      return true;
+    });
+  }
 
-                seenBefore.push(or.option);
-            } else if (or.rank === 1) {
-                return false;
-            }
+  private sendVote = () => {
+    axios.put('/api/vote', {
+      id: this.state.poll_id,
+      voter: this.state.voter,
+      choices: this.state.choices
+    }).then(res => {
+      console.log('success');
+    }).catch(err => {
+      console.log('error');
+    });
+  }
 
-            return true;
-        });
+  private changeRank = (rank: number, value: unknown): void => {
+    const choices = this.state.choices.slice(0);
+    let remainingOptions = this.state.remainingOptions.slice(0);
+
+    const optionRank = choices.find(x => x.rank === rank);
+    if (optionRank) {
+      if (optionRank.option) {
+        remainingOptions.push(optionRank.option);
+      }
+
+      optionRank.option = value as string
+
+      remainingOptions = remainingOptions.filter(x => x !== value as string);
     }
 
-    private sendVote = () => {
-        axios.put('/api/vote', {
-            id: this.state.poll_id,
-            voter: this.state.voter,
-            choices: this.state.choices
-        }).then(res => {
-            console.log('success');
-        }).catch(err => {
-            console.log('error');
-        });
+    this.setState({
+      choices: choices,
+      remainingOptions: remainingOptions
+    });
+  }
+
+  private getOptions = (selectedOption: string | null): string[] => {
+    if (selectedOption) {
+      return [selectedOption].concat(this.state.remainingOptions);
     }
 
-    private changeRank = (rank: number, e: React.ChangeEvent<HTMLSelectElement>): void => {
-        const choices = this.state.choices.slice(0);
+    return this.state.remainingOptions;
+  }
 
-        const optionRank = choices.find(x => x.rank == rank);
-        if (optionRank) {
-            optionRank.option = e.target.value
-        }
+  componentDidMount() {
+    if (this.state.poll_id) {
+      this.getPoll();
+    }
+  }
 
-        this.setState({
-            choices: choices
-        });
+  render() {
+    if (!this.state.poll) {
+      return <div />;
     }
 
-    componentDidMount() {
-        if (this.state.poll_id) {
-            this.getPoll();
-        }
-    }
-
-    render() {
-        const options = this.state.poll && this.state.poll.options || [];
-        return (
-            <>
-                {this.state.poll && <Link to={`/poll?poll_id=${this.state.poll.id}`}>Back to Poll</Link>}
-                <h1>Vote page</h1>
-                <div>
-                    <input 
-                        name='voter' 
-                        value={this.state.voter} 
-                        onChange={e => this.setState({'voter': e.target.value})} 
-                        placeholder='Voter Name'
-                    />
-                </div>
-                {this.state.poll && <table>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Option</th>
-                    </tr>
-                    {this.state.choices.map(or => 
-                        <tr key={or.rank}>
-                            <td>
-                                {or.rank + 1}.
-                            </td>
-                            <td>
-                                <select value={or.option || ''} onChange={e => this.changeRank(or.rank, e)}>
-                                    <option>-- Select Option --</option>
-                                    {options.map(o => 
-                                        <option key={o} value={o}>{o}</option>
-                                    )}
-                                </select>
-                            </td>
-                        </tr>
-                    )}
-                </table>}
-                <button disabled={!this.isValid()} onClick={this.sendVote}>Vote</button>
-            </>
-        );
-    }
+    return (
+      <>
+        {this.state.poll && <Link to={`/poll?poll_id=${this.state.poll.id}`}>Back to Poll</Link>}
+        <h1>Vote in {this.state.poll.name}</h1>
+        <div>
+          <TextField
+            name='voter'
+            value={this.state.voter}
+            onChange={e => this.setState({ 'voter': e.target.value })}
+            label='Voter Name'
+          />
+        </div>
+        {this.state.poll && <Table style={{marginTop: 24}}>
+          <TableHead>
+            <TableRow>
+              <TableCell>Rank</TableCell>
+              <TableCell>Option</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {this.state.choices.map(or =>
+              <TableRow key={or.rank}>
+                <TableCell>
+                  {or.rank + 1}
+                </TableCell>
+                <TableCell>
+                  <FormControl style={{minWidth: 240}}>
+                    <Select
+                      value={or.option || ''}
+                      onChange={e => this.changeRank(or.rank, e.target.value)}
+                    >
+                      <MenuItem value=''>&nbsp;</MenuItem>
+                      {this.getOptions(or.option).map(o =>
+                        <MenuItem key={o} value={o}>{o || '\xa0'}</MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>}
+        <Button 
+          disabled={!this.isValid()} 
+          onClick={this.sendVote}
+          variant="contained"
+          color="primary"
+          style={{ width: '100%', marginTop: 24 }}
+        >
+          <Link to={`/poll?poll_id=${this.state.poll.id}`} style={{textDecoration: 'inherit', color: 'inherit'}}>Vote</Link>
+        </Button>
+      </>
+    );
+  }
 }
